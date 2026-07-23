@@ -1,0 +1,25 @@
+{
+  "students": [
+    {
+      "id": "1",
+      "name": "Nguyễn Văn An",
+      "class": "7A1"
+    },
+    {
+      "id": "2",
+      "name": "Trần Thị Bình",
+      "class": "7A2"
+    },
+    {
+      "id": "3",
+      "name": "Lê Minh Châu",
+      "class": "7A3"
+    },
+    {
+      "name": "Nguyễn Văn Nam",
+      "class": "7a4",
+      "id": "4"
+    }
+  ],
+  "$schema": "./node_modules/json-server/schema.json"
+}
