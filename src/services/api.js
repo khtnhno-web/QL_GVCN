@@ -65,6 +65,25 @@ export async function deleteStudent(id) {
 
   return data;
 }
+export async function deleteBehavior(id) {
+
+    console.log("Đang xóa ID:", id);
+
+    const res = await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({
+            action: "remove",
+            resource: "behavior",
+            id: id,
+        }),
+    });
+
+    const data = await res.text();
+
+    console.log("API trả về:", data);
+
+    return data;
+}
 export async function getBehavior() {
 
   const response = await fetch(API_URL + "?resource=behavior");
@@ -85,6 +104,33 @@ export async function addBehavior(item) {
       action: "add",
 
       resource: "behavior",
+
+      payload: item,
+
+    }),
+
+  });
+
+  const data = await res.text();
+
+  console.log(data);
+
+  return data;
+
+}
+export async function updateBehavior(id, item) {
+
+  const res = await fetch(API_URL, {
+
+    method: "POST",
+
+    body: JSON.stringify({
+
+      action: "update",
+
+      resource: "behavior",
+
+      id: id,
 
       payload: item,
 

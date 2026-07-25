@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import * as XLSX from "xlsx";
+
 import {
   getStudents,
   addStudent,
@@ -11,11 +13,13 @@ function App() {
   const [students, setStudents] = useState([]);
 
   const [selectedStudents, setSelectedStudents] = useState([]);
-  
+
 const [search, setSearch] = useState("");
 
 const [name, setName] = useState("");
 const [lop, setLop] = useState("");
+
+const [excelFile, setExcelFile] = useState(null);
 
 const [editingId, setEditingId] = useState(null);
 const [isEditing, setIsEditing] = useState(false);
@@ -117,6 +121,59 @@ async function xoaHocSinh(id) {
   alert("Đã xóa học sinh.");
 
 }
+
+async function importExcel() {
+
+  if (!excelFile) {
+    alert("Vui lòng chọn file Excel.");
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = async (e) => {
+
+    const data = new Uint8Array(e.target.result);
+
+    const workbook = XLSX.read(data, { type: "array" });
+
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+    const rows = XLSX.utils.sheet_to_json(sheet);
+
+    for (const row of rows) {
+
+      await addStudent({
+
+        "mã học sinh": row["mã học sinh"] || "",
+
+        "họ và tên": row["họ và tên"] || "",
+
+        "lớp": row["lớp"] || "",
+
+        "tổ": row["tổ"] || "",
+
+        "giới tính": row["giới tính"] || "",
+
+        "ngày sinh": row["ngày sinh"] || "",
+
+        "địa chỉ": row["địa chỉ"] || "",
+
+        "trạng thái": row["trạng thái"] || "đang học",
+
+      });
+
+    }
+
+    await loadStudents();
+
+    alert("Import thành công!");
+
+  };
+
+  reader.readAsArrayBuffer(excelFile);
+
+}
 const filteredStudents = students.filter((hs) =>
   hs["họ và tên"]
     .toLowerCase()
@@ -150,6 +207,22 @@ const filteredStudents = students.filter((hs) =>
 >
   {isEditing ? "Lưu thay đổi" : "Thêm học sinh"}
 </button>
+
+</div>
+<div style={{ marginBottom: "20px" }}>
+
+    <input
+        type="file"
+        accept=".xlsx,.xls"
+        onChange={(e) => setExcelFile(e.target.files[0])}
+    />
+
+    <button
+        style={{ marginLeft: "10px" }}
+        onClick={importExcel}
+    >
+        📥 Import Excel
+    </button>
 
 </div>
 <div style={{ marginBottom: "20px" }}>

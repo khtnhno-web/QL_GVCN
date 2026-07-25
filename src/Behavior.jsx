@@ -4,8 +4,9 @@ import { saveAs } from "file-saver";
 import {
     getBehavior,
     addBehavior,
+    updateBehavior,
+    deleteBehavior,
     getStudents,
-
     getCriteria,
     addCriteria,
     updateCriteria,
@@ -45,6 +46,20 @@ function Behavior() {
     const [reportMonth, setReportMonth] = useState("");
     const [reportType, setReportType] = useState("month");
 
+    // =========================
+// PHIẾU GỬI PHỤ HUYNH
+// =========================
+
+const [parentReportType, setParentReportType] = useState("week");
+
+const [parentMonth, setParentMonth] = useState("");
+
+const [parentWeekStart, setParentWeekStart] = useState("");
+
+const [parentWeekEnd, setParentWeekEnd] = useState("");
+
+const [parentStudent, setParentStudent] = useState("");
+
     const [weekStart, setWeekStart] = useState("");
     const [weekEnd, setWeekEnd] = useState("");
 
@@ -74,6 +89,9 @@ function Behavior() {
     const [behaviorContent, setBehaviorContent] = useState("");
 
     const [behaviorPoint, setBehaviorPoint] = useState("");
+
+    const [editingBehaviorId, setEditingBehaviorId] = useState(null);
+const [isEditingBehavior, setIsEditingBehavior] = useState(false);
     // =======================
 // AI
 // =======================
@@ -95,6 +113,37 @@ function Behavior() {
         const data = await getBehavior();
         setBehaviors(data);
     }
+    function suaNeNep(item) {
+
+    setEditingBehaviorId(item.recordid);
+
+    setSelectedStudent(item.studentid);
+
+    setBehaviorDate(item["ngày"]);
+
+    setBehaviorType(item["loại"]);
+
+    setBehaviorContent(item["nội dung"]);
+
+    setBehaviorPoint(item["điểm"]);
+
+    setIsEditingBehavior(true);
+
+}
+    async function xoaNeNep(id) {
+
+    const xacNhan = window.confirm(
+        "Bạn có chắc muốn xóa bản ghi này không?"
+    );
+
+    if (!xacNhan) return;
+
+    await deleteBehavior(id);
+
+    await loadBehavior();
+
+    alert("Đã xóa.");
+}
     async function loadStudents() {
 
         const data = await getStudents();
@@ -145,7 +194,6 @@ function Behavior() {
                 const maHS = String(
                     row["Mã học sinh"] || row["mã học sinh"] || ""
                 ).trim();
-
                 const hs = students.find(
                     (s) =>
                         String(s["mã học sinh"]).trim() === maHS
@@ -230,11 +278,7 @@ if (typeof ngay === "string" && ngay.includes("/")) {
 
             console.log("Mã HS:", maHS);
 
-            const hs = students.find(
-                (s) =>
-                    String(s["mã học sinh"]).trim() === maHS
-            );
-
+            
             if (!hs) {
 
                 notFound++;
@@ -345,16 +389,62 @@ if (typeof ngay === "string" && ngay.includes("/")) {
         alert("Đã thêm hành vi.");
 
     }
+async function capNhatHanhVi() {
+
+    if (!editingBehaviorId) {
+        alert("Không tìm thấy bản ghi cần sửa.");
+        return;
+    }
+
+    const hs = students.find(
+        (s) => String(s.id) === String(selectedStudent)
+    );
+
+    if (!hs) {
+        alert("Không tìm thấy học sinh.");
+        return;
+    }
+
+    await updateBehavior(editingBehaviorId, {
+
+        studentId: hs.id,
+
+        "mã học sinh": hs["mã học sinh"],
+
+        "họ và tên": hs["họ và tên"],
+
+        "lớp": hs["lớp"],
+
+        "ngày": behaviorDate,
+
+        "loại": behaviorType,
+
+        "nội dung": behaviorContent,
+
+        "điểm": behaviorPoint
+
+    });
+
+    alert("Đã cập nhật nề nếp.");
+
+    setEditingBehaviorId(null);
+    setIsEditingBehavior(false);
+
+    setSelectedStudent("");
+    setSelectedStudents([]);
+
+    setBehaviorDate("");
+    setBehaviorType("Khen");
+    setBehaviorContent("");
+    setBehaviorPoint("");
+
+    await loadBehavior();
+}
 
             async function saveCriteria() {
 
     if (criteriaName.trim() === "") {
         alert("Nhập tên tiêu chí.");
-        return;
-    }
-
-    if (criteriaContent.trim() === "") {
-        alert("Nhập nội dung.");
         return;
     }
 
@@ -396,6 +486,370 @@ if (typeof ngay === "string" && ngay.includes("/")) {
     setEditingCriteriaId(null);
 
 }
+function inPhieuPhuHuynh() {
+
+    console.log("parentStudent =", parentStudent);
+    console.log("typeof =", typeof parentStudent);
+
+    if (!parentStudent) {
+        alert("Chưa chọn học sinh.");
+        return;
+    }
+
+    // phần còn lại giữ nguyên
+
+    const hs = students.find(
+        x => String(x.id) === String(parentStudent)
+    );
+console.log("Học sinh:", hs);
+console.log("behaviors =", behaviors);
+console.log("Behavior đầu tiên =", behaviors[0]);
+
+if (!hs) {
+    alert("Không tìm thấy học sinh.");
+    return;
+}
+
+let list = behaviors.filter(
+    x =>
+        String(x["mã học sinh"]).trim() ===
+        String(hs["mã học sinh"]).trim()
+);
+
+console.log("Danh sách:", list);
+    if (parentReportType === "month") {
+
+        list = list.filter(
+            x => String(x["ngày"]).startsWith(parentMonth)
+        );
+
+    } else {
+
+        list = list.filter(
+            x =>
+                x["ngày"] >= parentWeekStart &&
+                x["ngày"] <= parentWeekEnd
+        );
+
+    }
+
+    const diemCong = list
+        .filter(x => x["loại"] === "Khen")
+        .reduce((s, x) => s + Number(x["điểm"] || 0), 0);
+
+    const diemTru = list
+        .filter(x => x["loại"] === "Nhắc")
+        .reduce((s, x) => s + Number(x["điểm"] || 0), 0);
+
+    const html = `
+    <html>
+
+    <head>
+
+    <title>Phiếu phụ huynh</title>
+
+    </head>
+
+    <body style="font-family:Arial;padding:40px;">
+
+    <h2 style="text-align:center">
+    PHIẾU NHẬN XÉT NỀ NẾP
+    </h2>
+
+    <p><b>Họ tên:</b> ${hs["họ và tên"]}</p>
+
+    <p><b>Lớp:</b> ${hs["lớp"]}</p>
+
+    <hr>
+
+    <table
+    border="1"
+    cellspacing="0"
+    cellpadding="6"
+    width="100%"
+    >
+
+    <tr>
+
+    <th>Ngày</th>
+
+    <th>Loại</th>
+
+    <th>Nội dung</th>
+
+    <th>Điểm</th>
+
+    </tr>
+
+    ${list.map(x=>`
+
+        <tr>
+
+        <td>${x["ngày"]}</td>
+
+        <td>${x["loại"]}</td>
+
+        <td>${x["nội dung"]}</td>
+
+        <td>${x["điểm"]}</td>
+
+        </tr>
+
+    `).join("")}
+
+    </table>
+
+    <br>
+
+    <h3>Tổng điểm cộng : ${diemCong}</h3>
+
+    <h3>Tổng điểm trừ : ${diemTru}</h3>
+
+    <h3>Điểm cuối : ${diemCong-diemTru}</h3>
+
+    <br><br>
+
+    <div style="text-align:right">
+
+    Giáo viên chủ nhiệm
+
+    <br><br><br>
+
+    (Ký tên)
+
+    </div>
+
+    </body>
+
+    </html>
+    `;
+
+    const w = window.open();
+
+    w.document.write(html);
+
+    w.document.close();
+
+    w.print();
+
+} 
+
+function inTatCaPhieuPhuHuynh(){
+
+    let html = `
+    <html>
+
+    <head>
+
+    <title>Phiếu phụ huynh</title>
+
+    <style>
+
+    body{
+        font-family:Arial;
+    }
+
+    .page{
+        page-break-after:always;
+        padding:40px;
+    }
+
+    table{
+        width:100%;
+        border-collapse:collapse;
+    }
+
+    table,th,td{
+        border:1px solid black;
+    }
+
+    th,td{
+        padding:6px;
+    }
+
+    </style>
+
+    </head>
+
+    <body>
+    `;
+
+    students.forEach((hs)=>{
+
+    let list = behaviors.filter(
+        x =>
+            String(x["mã học sinh"]).trim() ===
+            String(hs["mã học sinh"]).trim()
+    );
+
+    if(parentReportType==="month"){
+
+        list=list.filter(
+            x=>String(x["ngày"]).startsWith(parentMonth)
+        );
+
+    }else{
+
+        list=list.filter(
+            x=>
+                x["ngày"]>=parentWeekStart &&
+                x["ngày"]<=parentWeekEnd
+        );
+
+    }
+
+    const diemCong=list
+        .filter(x=>x["loại"]==="Khen")
+        .reduce((s,x)=>s+Number(x["điểm"]||0),0);
+
+    const diemTru=list
+        .filter(x=>x["loại"]==="Nhắc")
+        .reduce((s,x)=>s+Number(x["điểm"]||0),0);
+       const diemCuoi = 10 + diemCong + diemTru;
+
+let xepLoai = "";
+
+if (diemCuoi >= 12) {
+
+    xepLoai = "Xuất sắc";
+
+} else if (diemCuoi >= 10) {
+
+    xepLoai = "Tốt";
+
+} else if (diemCuoi >= 8) {
+
+    xepLoai = "Khá";
+
+} else if (diemCuoi >= 5) {
+
+    xepLoai = "Đạt";
+
+} else {
+
+    xepLoai = "Cần cố gắng";
+
+}
+       
+        html += `
+
+    
+
+ <div
+class="page"
+style="
+padding:40px;
+font-family:'Times New Roman';
+font-size:16px;
+">
+
+<div style="text-align:center;line-height:1.6">
+
+<div style="font-size:18px;font-weight:bold">
+TRƯỜNG THCS VŨNG TÀU
+</div>
+
+<div style="font-size:16px">
+Thành phố Hồ Chí Minh
+</div>
+
+<br>
+
+<div
+style="
+font-size:24px;
+font-weight:bold;
+color:#0b5394;
+">
+PHIẾU NHẬN XÉT NỀ NẾP HỌC SINH
+</div>
+
+<div
+style="
+font-size:16px;
+margin-top:8px;
+">
+
+${
+parentReportType==="month"
+?
+`Tháng ${parentMonth}`
+:
+`Từ ngày ${parentWeekStart} đến ngày ${parentWeekEnd}`
+}
+
+</div>
+
+</div>
+
+<hr style="margin:20px 0">
+
+<p><b>Họ tên:</b> ${hs["họ và tên"]}</p>
+
+<p><b>Lớp:</b> ${hs["lớp"]}</p>
+
+<hr>
+
+<table>
+
+<tr>
+<th>Ngày</th>
+<th>Loại</th>
+<th>Nội dung</th>
+<th>Điểm</th>
+</tr>
+
+${list.map(x=>`
+
+<tr>
+
+<td>${x["ngày"]}</td>
+
+<td>${x["loại"]}</td>
+
+<td>${x["nội dung"]}</td>
+
+<td>${x["điểm"]}</td>
+
+</tr>
+
+`).join("")}
+
+</table>
+
+<br>
+
+<h3>Điểm gốc: 10</h3>
+
+<h3>Điểm cộng: +${diemCong}</h3>
+
+<h3>Điểm trừ: ${diemTru}</h3>
+
+<h3>Điểm cuối: ${diemCuoi}</h3>
+
+<h3 style="color:blue">
+Xếp loại: ${xepLoai}
+</h3>
+
+</div>
+`;
+
+});
+
+    html += `
+    </body>
+
+    </html>
+    `;
+
+const w = window.open();
+
+w.document.write(html);
+
+w.document.close();
+
+w.print();
+}
 
     function exportExcel() {
 
@@ -418,24 +872,20 @@ if (typeof ngay === "string" && ngay.includes("/")) {
         const report = [];
 
         students.forEach((hs) => {
+            console.log("Student =", hs);
+console.log("HS đang chọn:", hs);
+console.log("Mã HS:", hs["mã học sinh"]);
 
-            const list = behaviors.filter((b) => {
+          const list = behaviors.filter((b) => {
 
-                if (b["mã học sinh"] !== hs["mã học sinh"]) {
-                    return false;
-                }
+    console.log("--------------------");
+    console.log("Behavior =", b["mã học sinh"], typeof b["mã học sinh"]);
+    console.log("Student  =", hs["mã học sinh"], typeof hs["mã học sinh"]);
 
-                if (reportType === "month") {
-                    return String(b["ngày"]).startsWith(reportMonth);
-                }
+    return String(b["mã học sinh"]).trim() === String(hs["mã học sinh"]).trim();
 
-                return (
-                    b["ngày"] >= weekStart &&
-                    b["ngày"] <= weekEnd
-                );
-
-            });
-
+});  
+                
             const soKhen = list.filter(
                 (x) => x["loại"] === "Khen"
             ).length;
@@ -457,6 +907,31 @@ if (typeof ngay === "string" && ngay.includes("/")) {
                     (s, x) => s + Number(x["điểm"] || 0),
                     0
                 );
+              const diemCuoi = 10 + diemCong + diemTru;
+              let xepLoai = "";
+
+if (diemCuoi >= 12) {
+
+    xepLoai = "Xuất sắc";
+
+} else if (diemCuoi >= 10) {
+
+    xepLoai = "Tốt";
+
+} else if (diemCuoi >= 8) {
+
+    xepLoai = "Khá";
+
+} else if (diemCuoi >= 5) {
+
+    xepLoai = "Đạt";
+
+} else {
+
+    xepLoai = "Cần cố gắng";
+
+}
+
             const chiTiet = list
     .map((x) => {
 
@@ -1176,12 +1651,19 @@ if (tc) {
 </select>
 
 </div>
-<button onClick={themHanhVi}>
+<button
+    onClick={
+        isEditingBehavior
+            ? capNhatHanhVi
+            : themHanhVi
+    }
+>
 
-                    Thêm
+    {isEditingBehavior
+        ? "Cập nhật"
+        : "Thêm"}
 
-                </button>
-                                {/* Hàng 4 */}
+</button>                                {/* Hàng 4 */}
                 <div style={{ marginBottom: "20px" }}>
 
                     <h3>Import từ Excel</h3>
@@ -1264,20 +1746,152 @@ if (tc) {
                 </button>
 
             </div>
+            <hr />
+
+<h2>📄 Phiếu gửi phụ huynh</h2>
+
+<div
+    style={{
+        border: "1px solid #ddd",
+        padding: "15px",
+        borderRadius: "8px",
+        marginBottom: "20px",
+        background: "#fafafa",
+    }}
+>
+
+<div style={{ marginBottom: "10px" }}>
+
+<select
+    value={parentReportType}
+    onChange={(e)=>setParentReportType(e.target.value)}
+>
+
+<option value="week">
+Theo tuần
+</option>
+
+<option value="month">
+Theo tháng
+</option>
+
+</select>
+
+</div>
+
+{
+parentReportType==="month"
+?
+
+<input
+type="month"
+value={parentMonth}
+onChange={(e)=>setParentMonth(e.target.value)}
+/>
+
+:
+
+<div>
+
+<input
+type="date"
+value={parentWeekStart}
+onChange={(e)=>setParentWeekStart(e.target.value)}
+/>
+
+<span
+style={{margin:"0 10px"}}
+>
+đến
+</span>
+
+<input
+type="date"
+value={parentWeekEnd}
+onChange={(e)=>setParentWeekEnd(e.target.value)}
+/>
+
+</div>
+
+}
+
+<div style={{marginTop:"15px"}}>
+
+<select
+    style={{ width: "350px" }}
+    value={parentStudent}
+    onChange={(e) => {
+        console.log("Đã chọn:", e.target.value);
+        setParentStudent(e.target.value);
+    }}
+>
+<option value="">
+-- Chọn học sinh --
+</option>
+
+{
+students.map((hs)=>(
+
+<option
+key={hs.id}
+value={hs.id}
+>
+
+{hs["họ và tên"]} - {hs["lớp"]}
+
+</option>
+
+))
+}
+
+</select>
+<p>Đã chọn: {parentStudent}</p>
+<button
+    style={{
+        marginLeft: "15px",
+        background: "#1976d2",
+        color: "white",
+        border: "none",
+        padding: "8px 16px",
+        borderRadius: "5px",
+        cursor: "pointer"
+    }}
+    onClick={inPhieuPhuHuynh}
+>
+    🖨 In phiếu
+</button>
+<button
+    style={{
+        marginLeft: "10px",
+        background: "#28a745",
+        color: "white",
+        border: "none",
+        padding: "8px 16px",
+        borderRadius: "5px",
+        cursor: "pointer"
+    }}
+    onClick={inTatCaPhieuPhuHuynh}
+>
+    🖨 In cả lớp
+</button>
+</div>
+
+</div>
             <table border="1" cellPadding="10">
 
                 <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Ngày</th>
-                        <th>Họ tên</th>
-                        <th>Lớp</th>
-                        <th>Loại</th>
-                        <th>Nội dung</th>
-                        <th>Điểm</th>
-                    </tr>
-                </thead>
+<tr>
 
+<th>ID</th>
+<th>Ngày</th>
+<th>Họ tên</th>
+<th>Lớp</th>
+<th>Loại</th>
+<th>Nội dung</th>
+<th>Điểm</th>
+
+</tr>
+</thead>
                 <tbody>
                     {behaviors.map((item, index) => (
                         <tr key={item.recordid || item.studentid + "-" + item["ngày"]}>
@@ -1288,6 +1902,22 @@ if (tc) {
                             <td>{item["loại"]}</td>
                             <td>{item["nội dung"]}</td>
                             <td>{item["điểm"]}</td>
+                            <td>
+
+    <button
+        onClick={() => suaNeNep(item)}
+    >
+        Sửa
+    </button>
+
+    <button
+        style={{ marginLeft: "8px" }}
+onClick={() => xoaNeNep(item.recordid)} 
+    >
+        Xóa
+    </button>
+
+</td>
                         </tr>
                     ))}
                 </tbody>
